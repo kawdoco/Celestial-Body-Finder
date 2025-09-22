@@ -1,0 +1,160 @@
+import os
+import tkinter as tk
+from tkinter import messagebox
+import numpy as np
+from PIL import Image
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import vlc
+
+# ----------------------
+# Celestial Classes
+# ----------------------
+class CelestialObject:
+    def __init__(self, name, object_type, mass, gravity, radius):
+        self.name = name
+        self.object_type = object_type
+        self.mass = mass
+        self.gravity = gravity
+        self.radius = radius
+
+    def get_info(self):
+        return (f"Name: {self.name}\n"
+                f"Type: {self.object_type}\n"
+                f"Mass: {self.mass:.2e} kg\n"
+                f"Gravity: {self.gravity} m/s²\n"
+                f"Radius: {self.radius} km\n")
+
+class Planet(CelestialObject):
+    def __init__(self, name, mass, gravity, radius, has_life=False):
+        super().__init__(name, "Planet", mass, gravity, radius)
+        self.has_life = has_life
+    def get_info(self):
+        return super().get_info() + f"Supports Life: {'Yes' if self.has_life else 'No'}\n"
+
+class Moon(CelestialObject):
+    def __init__(self, name, mass, gravity, radius, planet):
+        super().__init__(name, "Moon", mass, gravity, radius)
+        self.planet = planet
+    def get_info(self):
+        return super().get_info() + f"Orbits: {self.planet}\n"
+
+class Star(CelestialObject):
+    def __init__(self, name, mass, gravity, radius, temperature):
+        super().__init__(name, "Star", mass, gravity, radius)
+        self.temperature = temperature
+    def get_info(self):
+        return super().get_info() + f"Surface Temperature: {self.temperature} K\n"
+
+# Built-in dataset
+DATASET = {
+    "earth": Planet("Earth", 5.97e24, 9.8, 6371, has_life=True),
+    "mars": Planet("Mars", 6.39e23, 3.7, 3389),
+    "moon": Moon("Moon", 7.35e22, 1.62, 1737, "Earth"),
+    "jupiter": Planet("Jupiter", 1.898e27, 24.8, 69911),
+    "sun": Star("Sun", 1.989e30, 274, 696340, 5778),
+}
+
+ASSET_DIR = "assets"
+
+# ----------------------
+# Main App
+# ----------------------
+class AstronomyApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Celestial Body Finder - 3D & Video")
+        self.root.geometry("1100x700")
+        self.player = None
+
+        # Input + Search
+        tk.Label(root, text="🔭 Search Celestial Object",
+                 font=("Arial", 16, "bold")).pack(pady=5)
+        self.entry = tk.Entry(root, font=("Arial", 14))
+        self.entry.pack()
+        self.entry.insert(0, "earth")
+        tk.Button(root, text="Search", font=("Arial", 12),
+                  command=self.search_object).pack(pady=5)
+
+        # Info box
+        self.result_text = tk.Text(root, height=8, width=60,
+                                   wrap="word", font=("Arial", 12))
+        self.result_text.pack(pady=5)
+
+        # Frame for video
+        self.video_frame = tk.Frame(root, width=480, height=270, bg="black")
+        self.video_frame.pack(side="left", padx=10, pady=10)
+
+        # Frame for 3D plot
+        self.plot_frame = tk.Frame(root)
+        self.plot_frame.pack(side="right", padx=10, pady=10)
+
+    # Search logic
+    def search_object(self):
+        name = self.entry.get().strip().lower()
+        self.result_text.delete("1.0", tk.END)
+
+        if name not in DATASET:
+            messagebox.showerror("Error", f"No data found for '{name}'")
+            return
+
+        obj = DATASET[name]
+        self.result_text.insert(tk.END, obj.get_info())
+
+        self.show_3d_planet(name)
+        self.play_video(name)
+
+    # Show 3D planet with texture
+    def show_3d_planet(self, name):
+        for widget in self.plot_frame.winfo_children():
+            widget.destroy()
+
+        texture_path = os.path.join(ASSET_DIR, f"{name}_texture.jpg")
+        if not os.path.exists(texture_path):
+            tk.Label(self.plot_frame, text="No texture image found.",
+                     font=("Arial", 12)).pack()
+            return
+
+        img = np.array(Image.open(texture_path).resize((360,180)))/255.0
+        fig = plt.Figure(figsize=(4.5,4.5), dpi=100)
+        ax = fig.add_subplot(111, projection='3d')
+
+        u = np.linspace(0, 2*np.pi, img.shape[1])
+        v = np.linspace(0, np.pi, img.shape[0])
+        x = np.outer(np.cos(u), np.sin(v))
+        y = np.outer(np.sin(u), np.sin(v))
+        z = np.outer(np.ones_like(u), np.cos(v))
+
+        ax.plot_surface(x, y, z, rstride=5, cstride=5,
+                        facecolors=img[::-1,:,:], linewidth=0, antialiased=False)
+        ax.set_axis_off()
+
+        canvas = FigureCanvasTkAgg(fig, master=self.plot_frame)
+        canvas.draw()
+        canvas.get_tk_widget().pack()
+
+    # Play short video clip
+    def play_video(self, name):
+        if self.player:
+            self.player.stop()
+
+        video_path = os.path.join(ASSET_DIR, f"{name}.mp4")
+        if not os.path.exists(video_path):
+            tk.Label(self.video_frame, text="No video file found.",
+                     font=("Arial", 12), bg="black", fg="white").pack()
+            return
+
+        instance = vlc.Instance()
+        self.player = instance.media_player_new()
+        self.player.set_hwnd(self.video_frame.winfo_id())  # Windows
+        media = instance.media_new(video_path)
+        self.player.set_media(media)
+        self.player.play()
+
+# ----------------------
+# Run App
+# ----------------------
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = AstronomyApp(root)
+    root.mainloop()
