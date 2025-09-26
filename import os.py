@@ -7,9 +7,9 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import vlc
 
-# ----------------------
+# ---------------------- #
 # Celestial Classes
-# ----------------------
+# ---------------------- #
 class CelestialObject:
     def __init__(self, name, object_type, mass, gravity, radius):
         self.name = name
@@ -46,7 +46,9 @@ class Star(CelestialObject):
     def get_info(self):
         return super().get_info() + f"Surface Temperature: {self.temperature} K\n"
 
+# ---------------------- #
 # Built-in dataset
+# ---------------------- #
 DATASET = {
     "earth": Planet("Earth", 5.97e24, 9.8, 6371, has_life=True),
     "mars": Planet("Mars", 6.39e23, 3.7, 3389),
@@ -57,16 +59,18 @@ DATASET = {
 
 ASSET_DIR = "assets"
 
-# ----------------------
+
+# ---------------------- #
 # Main App
-# ----------------------
+# ---------------------- #
 class AstronomyApp:
     def __init__(self, root):
         self.root = root
         self.root.title("✨ Celestial Explorer ✨")
-        self.root.geometry("1200x750")
-        self.root.configure(bg="#0b0f1a")  # dark space background
+        self.root.geometry("1200x780")
+        self.root.configure(bg="#0b0f1a")
         self.player = None
+        self.icons = {}  # store image references to avoid garbage collection
 
         # Title
         tk.Label(
@@ -74,14 +78,20 @@ class AstronomyApp:
             font=("Orbitron", 26, "bold"), fg="#00e6ff", bg="#0b0f1a"
         ).pack(pady=15)
 
-        # Search Bar Frame
+        # --- Image Buttons ---
+        btn_frame = tk.Frame(root, bg="#0b0f1a")
+        btn_frame.pack(pady=10)
+        self.create_icon_buttons(btn_frame)
+
+        # Search Bar
         search_frame = tk.Frame(root, bg="#1c2230", bd=2, relief="ridge")
         search_frame.pack(pady=10)
 
         tk.Label(search_frame, text="🔭 Search Object:",
                  font=("Arial", 16, "bold"), fg="#00e6ff", bg="#1c2230").pack(side="left", padx=10)
 
-        self.entry = tk.Entry(search_frame, font=("Arial", 16), width=20, bg="#111522", fg="white")
+        self.entry = tk.Entry(search_frame, font=("Arial", 16), width=20,
+                              bg="#111522", fg="white")
         self.entry.pack(side="left", padx=10)
         self.entry.insert(0, "earth")
 
@@ -95,7 +105,7 @@ class AstronomyApp:
         content_frame = tk.Frame(root, bg="#0b0f1a")
         content_frame.pack(fill="both", expand=True, pady=10)
 
-        # Left - Info + Video
+        # Left Panel - Info + Video
         left_frame = tk.Frame(content_frame, bg="#1c2230", bd=2, relief="ridge")
         left_frame.pack(side="left", fill="both", expand=True, padx=10, pady=10)
 
@@ -113,7 +123,7 @@ class AstronomyApp:
         self.video_frame = tk.Frame(left_frame, width=480, height=270, bg="black")
         self.video_frame.pack(pady=10)
 
-        # Right - 3D plot
+        # Right Panel - 3D Visualization
         right_frame = tk.Frame(content_frame, bg="#1c2230", bd=2, relief="ridge")
         right_frame.pack(side="right", fill="both", expand=True, padx=10, pady=10)
 
@@ -122,6 +132,23 @@ class AstronomyApp:
 
         self.plot_frame = tk.Frame(right_frame, bg="#0b0f1a")
         self.plot_frame.pack(pady=10)
+
+    def create_icon_buttons(self, parent):
+        """Create image buttons for Earth, Mars, Moon, Jupiter, Sun"""
+        for name in ["earth", "mars", "moon", "jupiter", "sun"]:
+            icon_path = os.path.join(ASSET_DIR, f"{name}_icon.png")
+            if os.path.exists(icon_path):
+                img = Image.open(icon_path).resize((80, 80))
+                icon = ImageTk.PhotoImage(img)
+                self.icons[name] = icon  # keep a reference
+                tk.Button(parent, image=icon, bg="#0b0f1a",
+                          activebackground="#1c2230",
+                          command=lambda n=name: self.quick_search(n)).pack(side="left", padx=10)
+
+    def quick_search(self, name):
+        self.entry.delete(0, tk.END)
+        self.entry.insert(0, name)
+        self.search_object()
 
     def search_object(self):
         name = self.entry.get().strip().lower()
@@ -180,12 +207,13 @@ class AstronomyApp:
 
         instance = vlc.Instance()
         self.player = instance.media_player_new()
-        self.player.set_hwnd(self.video_frame.winfo_id())  # Windows
+        self.player.set_hwnd(self.video_frame.winfo_id())  # Windows only
         media = instance.media_new(video_path)
         self.player.set_media(media)
         self.player.play()
 
-# ----------------------
+
+# ---------------------- #
 if __name__ == "__main__":
     root = tk.Tk()
     app = AstronomyApp(root)
