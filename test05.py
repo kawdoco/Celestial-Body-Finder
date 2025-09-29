@@ -1,22 +1,21 @@
-# celestial_body_explorer_3d.py
+# celestial_explorer_with_pygame.py
 import os
 import sys
 import tkinter as tk
 from tkinter import messagebox
-from PIL import Image, ImageTk
+import pygame
+import math
 import numpy as np
-import matplotlib
-matplotlib.use("TkAgg")
-import matplotlib.pyplot as plt
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
 
-# Optional VLC for videos
-try:
-    import vlc
-    VLC_AVAILABLE = True
-except Exception:
-    VLC_AVAILABLE = False
+# --- Colors ---
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+YELLOW = (255, 255, 0)
+GRAY = (128, 128, 128)
+BLUE = (0, 0, 255)
+RED = (255, 0, 0)
+LIGHT_GREEN = (144, 238, 144)
+ORANGE = (255, 165, 0)
 
 # ---------------------- #
 # Celestial Classes
@@ -58,7 +57,7 @@ class Star(CelestialObject):
         return super().get_info() + f"Surface Temperature: {self.temperature} K\n"
 
 # ---------------------- #
-# Built-in dataset
+# Dataset
 # ---------------------- #
 DATASET = {
     "earth": Planet("Earth", 5.97e24, 9.8, 6371, has_life=True),
@@ -68,30 +67,71 @@ DATASET = {
     "sun": Star("Sun", 1.989e30, 274, 696340, 5778),
 }
 
-# Assets folder
-if getattr(sys, "frozen", False):
-    BASE_DIR = os.path.dirname(sys.executable)
-else:
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else os.getcwd()
-ASSET_DIR = os.path.join(BASE_DIR, "assets")
+# ---------------------- #
+# Pygame Mini Solar System Classes
+# ---------------------- #
+class CelestialBody:
+    def __init__(self, name, radius, color, orbit_distance, orbital_period, info_text):
+        self.name = name
+        self.radius = radius
+        self.color = color
+        self.orbit_distance = orbit_distance
+        self.orbital_period = orbital_period
+        self.info_text = info_text
+        self.angle = 0
+        self.x = 0
+        self.y = 0
+        self.is_highlighted = False
+
+    def update_position(self, time_factor, center_x, center_y):
+        if self.orbital_period != 0:
+            self.angle += (2 * math.pi / self.orbital_period) * time_factor
+        self.x = center_x + self.orbit_distance * math.cos(self.angle)
+        self.y = center_y + self.orbit_distance * math.sin(self.angle)
+
+    def draw(self, screen, center_x, center_y):
+        if self.orbit_distance > 0:
+            pygame.draw.circle(screen, GRAY, (int(center_x), int(center_y)), int(self.orbit_distance), 1)
+        pygame.draw.circle(screen, self.color, (int(self.x), int(self.y)), int(self.radius))
+        if self.is_highlighted:
+            pygame.draw.circle(screen, LIGHT_GREEN, (int(self.x), int(self.y)), int(self.radius) + 3, 2)
+        font = pygame.font.Font(None, 24)
+        screen.blit(font.render(self.name, True, WHITE), (self.x + self.radius + 5, self.y - self.radius))
+
+    def get_info(self):
+        return self.info_text
+
+# --- Solar System Data ---
+PLANET_DATA = [
+    CelestialBody("Sun", 30, YELLOW, 0, 0,
+        "Name: Sun\nType: Star\nMass: 1.989e30 kg\nGravity: 274 m/s²\nRadius: 696,340 km\nTemp: 5778 K"),
+    CelestialBody("Earth", 9, BLUE, 120, 365,
+        "Name: Earth\nType: Planet\nMass: 5.97e24 kg\nGravity: 9.8 m/s²\nRadius: 6,371 km\nHas Life: Yes"),
+    CelestialBody("Mars", 6, RED, 180, 687,
+        "Name: Mars\nType: Planet\nMass: 6.39e23 kg\nGravity: 3.7 m/s²\nRadius: 3,389 km"),
+    CelestialBody("Moon", 4, GRAY, 40, 27,
+        "Name: Moon\nType: Moon\nMass: 7.35e22 kg\nGravity: 1.62 m/s²\nRadius: 1,737 km\nOrbits: Earth"),
+    CelestialBody("Jupiter", 18, (200,150,100), 260, 4333,
+        "Name: Jupiter\nType: Planet\nMass: 1.898e27 kg\nGravity: 24.8 m/s²\nRadius: 69,911 km")
+]
+
+SOLAR_SYSTEM = {body.name.lower(): body for body in PLANET_DATA}
 
 # ---------------------- #
-# Main App
+# Tkinter App
 # ---------------------- #
 class AstronomyApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("✨ Celestial Explorer 3D ✨")
+        self.root.title("✨ Celestial Explorer Mini Solar System ✨")
         self.root.geometry("1200x780")
         self.root.configure(bg="#0b0f1a")
-        self.player = None
-        self.vlc_instance = None
 
         # Title
         tk.Label(root, text="🌌 Celestial Body Finder",
                  font=("Helvetica", 26, "bold"), fg="#00e6ff", bg="#0b0f1a").pack(pady=10)
 
-        # Search Bar
+        # Search Frame
         search_frame = tk.Frame(root, bg="#1c2230", bd=2, relief="ridge")
         search_frame.pack(pady=8, fill="x", padx=12)
         tk.Label(search_frame, text="🔭 Search Object:",
@@ -104,77 +144,64 @@ class AstronomyApp:
                   font=("Arial", 12, "bold"), bg="#00e6ff", fg="black",
                   activebackground="#008fb3", command=self.search_object).pack(side="left", padx=8)
 
-        # Content Frames
+        # Content Frame
         content_frame = tk.Frame(root, bg="#0b0f1a")
         content_frame.pack(fill="both", expand=True, pady=6, padx=12)
 
-        # Left - Info + Video
+        # Left Panel: Info
         left_frame = tk.Frame(content_frame, bg="#1c2230", bd=2, relief="ridge")
         left_frame.pack(side="left", fill="both", expand=True, padx=8, pady=8)
         tk.Label(left_frame, text="🌠 Object Information",
                  font=("Arial", 14, "bold"), fg="#00e6ff", bg="#1c2230").pack(pady=8)
-        self.result_text = tk.Text(left_frame, height=12, width=48,
+        self.result_text = tk.Text(left_frame, height=20, width=50,
                                    wrap="word", font=("Consolas", 12),
                                    bg="#0b0f1a", fg="white", insertbackground="white")
         self.result_text.pack(pady=6, padx=8)
-        tk.Label(left_frame, text="🎥 Video Preview",
-                 font=("Arial", 14, "bold"), fg="#00e6ff", bg="#1c2230").pack(pady=8)
-        self.video_frame = tk.Frame(left_frame, width=480, height=270, bg="black")
-        self.video_frame.pack(pady=6)
-        self.video_frame.pack_propagate(False)
 
-        # Right - 3D plot
-        right_frame = tk.Frame(content_frame, bg="#1c2230", bd=2, relief="ridge")
+        # Right Panel: Pygame Mini Solar System
+        right_frame = tk.Frame(content_frame, bg="#0b0f1a", width=700, height=700)
         right_frame.pack(side="right", fill="both", expand=True, padx=8, pady=8)
-        tk.Label(right_frame, text="🪐 3D Visualization",
-                 font=("Arial", 14, "bold"), fg="#00e6ff", bg="#1c2230").pack(pady=8)
-        self.plot_frame = tk.Frame(right_frame, bg="#0b0f1a")
-        self.plot_frame.pack(padx=8, pady=6, fill="both", expand=True)
+        right_frame.pack_propagate(False)
+        self.pygame_frame = right_frame
 
         # Status bar
         self.status = tk.Label(root, text="Ready", anchor="w", bg="#0b0f1a", fg="white")
         self.status.pack(fill="x", side="bottom")
 
+        # Initialize Pygame inside Tkinter Frame
+        os.environ['SDL_WINDOWID'] = str(self.pygame_frame.winfo_id())
+        os.environ['SDL_VIDEODRIVER'] = 'windib' if sys.platform.startswith("win") else ''
+        pygame.init()
+        self.screen = pygame.display.set_mode((self.pygame_frame.winfo_width(),
+                                               self.pygame_frame.winfo_height()))
+        pygame.display.init()
+
+        self.time_factor = 0.5
+        self.root.after(50, self.update_pygame)
+
     def search_object(self):
         self.result_text.delete("1.0", tk.END)
         name = self.entry.get().strip().lower()
-        if not name:
-            messagebox.showinfo("Info", "Please enter an object name.")
-            return
-        if name not in DATASET:
-            messagebox.showerror("Error", f"No data found for '{name}'")
-            return
+        if name in SOLAR_SYSTEM:
+            obj = SOLAR_SYSTEM[name]
+            self.result_text.insert(tk.END, obj.get_info())
+            for body in PLANET_DATA:
+                body.is_highlighted = (body == obj)
+        else:
+            self.result_text.insert(tk.END, "Object not found.")
 
-        obj = DATASET[name]
-        self.result_text.insert(tk.END, obj.get_info())
-        self.status.config(text=f"Showing: {obj.name}")
-        self.show_3d_object(obj)
+    def update_pygame(self):
+        # Fill background
+        self.screen.fill(BLACK)
+        center_x, center_y = self.screen.get_width()/2, self.screen.get_height()/2
 
-    def show_3d_object(self, obj):
-        for w in self.plot_frame.winfo_children():
-            w.destroy()
+        # Update and draw all bodies
+        for body in PLANET_DATA:
+            body.update_position(self.time_factor, center_x, center_y)
+            body.draw(self.screen, center_x, center_y)
 
-        fig = plt.Figure(figsize=(5, 5), dpi=100, facecolor="#0b0f1a")
-        ax = fig.add_subplot(111, projection="3d")
-        ax.set_facecolor("#0b0f1a")
-
-        # Sphere mesh
-        u = np.linspace(0, 2 * np.pi, 50)
-        v = np.linspace(0, np.pi, 50)
-        x = obj.radius * np.outer(np.cos(u), np.sin(v))
-        y = obj.radius * np.outer(np.sin(u), np.sin(v))
-        z = obj.radius * np.outer(np.ones_like(u), np.cos(v))
-
-        ax.plot_surface(x, y, z, color="blue" if obj.object_type=="Planet" else "yellow",
-                        edgecolor="k", linewidth=0.3, alpha=0.8)
-
-        ax.set_box_aspect([1, 1, 1])
-        ax.axis("off")
-        ax.view_init(elev=30, azim=30)
-
-        canvas = FigureCanvasTkAgg(fig, master=self.plot_frame)
-        canvas.draw()
-        canvas.get_tk_widget().pack(fill="both", expand=True)
+        pygame.display.flip()
+        self.root.after(30, self.update_pygame)
 
 # ---------------------- #
 if __name__ == "__main__":
