@@ -86,7 +86,7 @@ if TK_AVAILABLE:
                 style.theme_use("clam")
             except Exception:
                 pass
-            style.configure("TEntry", padding=8, fieldbackground="#111827")
+            style.configure("TEntry", padding=8, fieldbackground="#E1E6F1")
             style.map("TEntry", fieldbackground=[("active", "#0f172a")])
             style.configure("Rounded.TButton", font=("Segoe UI", 12, "bold"), padding=12)
             style.configure("Glass.TFrame", background="#0b0f1a")
@@ -150,7 +150,7 @@ if TK_AVAILABLE:
 
             glass = tk.Frame(self.card, bg="#0d1224"); glass.pack(padx=28, pady=28)
             tk.Label(glass, text="🪐", font=("Segoe UI Emoji", 48), bg="#0d1224", fg="#e0e7ff").pack(pady=(12, 4))
-            tk.Label(glass, text="Celestial Portal", font=("Poppins", 26, "bold"),
+            tk.Label(glass, text="Celestial Body Finder", font=("Poppins", 26, "bold"),
                      bg="#0d1224", fg="#a5b4fc").pack(pady=(0, 4))
             tk.Label(glass, text="Sign in to continue", font=("Segoe UI", 12),
                      bg="#0d1224", fg="#dbeafe").pack(pady=(0, 18))

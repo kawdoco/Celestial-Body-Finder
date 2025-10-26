@@ -75,7 +75,7 @@ PLANET_DATA = [
         "Name: Mars\nType: Planet\nMass: 6.39e23 kg\nGravity: 3.7 m/s²\nRadius: 3,389 km\nMoons: 2\n\nDescription: The 'Red Planet' with the largest volcano in the solar system - Olympus Mons."),
     CelestialBody("Jupiter", 18, BROWN, 220, 4333,
         "Name: Jupiter\nType: Planet\nMass: 1.898e27 kg\nGravity: 24.8 m/s²\nRadius: 69,911 km\nMoons: 95\n\nDescription: The largest planet in our solar system. A gas giant with a famous Great Red Spot."),
-    CelestialBody("Saturn", 16, LIGHT_BROWN, 280, 10759, True,
+    CelestialBody("Saturn", 16, LIGHT_BROWN, 280, 10759, 
         "Name: Saturn\nType: Planet\nMass: 5.683e26 kg\nGravity: 10.4 m/s²\nRadius: 58,232 km\nMoons: 146\n\nDescription: Known for its spectacular ring system made of ice and rock particles."),
 ]
 

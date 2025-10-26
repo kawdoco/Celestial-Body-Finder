@@ -10,7 +10,7 @@ from simulation import PLANET_DATA, SOLAR_SYSTEM, WHITE, BLACK
 class AstronomyApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("✨ Celestial Explorer - Interactive Solar System ✨")
+        self.root.title("✨ Celestial Body Finder - Interactive Solar System ✨")
         self.root.geometry("1400x900")
         self.root.configure(bg="#0b0f1a")
 
@@ -26,7 +26,7 @@ class AstronomyApp:
     def setup_ui(self):
         title_frame = tk.Frame(self.root, bg="#0b0f1a")
         title_frame.pack(pady=10)
-        tk.Label(title_frame, text="🌌 Celestial Explorer",
+        tk.Label(title_frame, text="🌌 Celestial Body Finder",
                  font=("Helvetica", 28, "bold"), fg="#00e6ff", bg="#0b0f1a").pack()
         tk.Label(title_frame, text="Interactive Solar System Simulator",
                  font=("Helvetica", 14), fg="#ffffff", bg="#0b0f1a").pack()
@@ -219,7 +219,7 @@ class AstronomyApp:
 
     def show_about(self):
         about_text = """
-🌌 Celestial Explorer 🌌
+🌌 Celestial Body Finder 🌌
 
 An interactive solar system simulator that allows you to:
 • Explore detailed information about celestial bodies
@@ -235,7 +235,7 @@ Features:
 
 Educational tool for astronomy enthusiasts and students!
         """
-        messagebox.showinfo("About Celestial Explorer", about_text.strip())
+        messagebox.showinfo("About Celestial Body Finder", about_text.strip())
 
     def handle_click(self, pos):
         from simulation import PLANET_DATA
