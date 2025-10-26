@@ -1,3 +1,4 @@
+
 # models.py
 class CelestialObject:
     def __init__(self, name, object_type, mass, gravity, radius):
